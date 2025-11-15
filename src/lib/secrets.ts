@@ -12,11 +12,23 @@ import { join } from 'path';
  */
 export function getSecret(name: string): string | undefined {
   // Try to read from Docker secret file first
-  const secretPath = join('/run/secrets', name);
+  // Docker secrets can be mounted with the secret name directly or as lowercase with .txt extension
+  const secretPathDirect = join('/run/secrets', name);
+  const secretPathLowercase = join('/run/secrets', name.toLowerCase() + '.txt');
   
+  // Try direct path first (e.g., /run/secrets/JWT_SECRET)
   try {
-    // Attempt to read the secret from file (Docker Compose secrets)
-    const secret = readFileSync(secretPath, 'utf-8').trim();
+    const secret = readFileSync(secretPathDirect, 'utf-8').trim();
+    if (secret) {
+      return secret;
+    }
+  } catch (error) {
+    // File doesn't exist or can't be read, try lowercase format
+  }
+  
+  // Try lowercase with .txt extension (e.g., /run/secrets/jwt_secret.txt)
+  try {
+    const secret = readFileSync(secretPathLowercase, 'utf-8').trim();
     if (secret) {
       return secret;
     }
