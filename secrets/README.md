@@ -45,3 +45,11 @@ Each secret file should contain only the secret value with no extra whitespace o
 - The application reads these files at startup (see `src/lib/secrets.ts`)
 - Secrets are never exposed to client-side code
 - For production deployments, consider using Docker Swarm secrets or Kubernetes secrets for better security
+
+## Docker Secret Mounting
+
+The application supports multiple Docker secret naming conventions:
+1. **Direct mounting** with uppercase names (e.g., `/run/secrets/JWT_SECRET`)
+2. **File-based mounting** with lowercase names and `.txt` extension (e.g., `/run/secrets/jwt_secret.txt`)
+
+The secret management system automatically tries both formats, ensuring compatibility with different Docker Compose configurations.
