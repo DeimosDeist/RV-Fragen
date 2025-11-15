@@ -15,6 +15,7 @@ Eine anonyme Q&A-Plattform für Tutoriumsfragen. Studierende können anonym Frag
   - Rate Limiting (10 Fragen pro Tag pro IP)
   - XSS-Schutz durch Input-Sanitization
   - IP-basierte Upvote-Sperre
+  - Docker Compose Secrets für sichere Credential-Verwaltung
 - 📊 **Filter & Sortierung**
   - Nach Upvotes oder Zeitpunkt sortieren
   - Zeitfilter (24h, 7 Tage, 30 Tage)
@@ -22,23 +23,96 @@ Eine anonyme Q&A-Plattform für Tutoriumsfragen. Studierende können anonym Frag
 
 ## 🚀 Setup
 
-### 1. Voraussetzungen
+### Option 1: Docker Compose (Empfohlen für Production)
 
-- Node.js 18+ 
-- npm oder yarn
+Docker Compose verwendet dateibasierte Secrets für maximale Sicherheit. Secrets werden niemals im Code oder in Environment-Variablen exponiert.
 
-### 2. Installation
+#### 1. Voraussetzungen
+
+- Docker & Docker Compose
+- Git (zum Klonen des Repos)
+
+#### 2. Secrets einrichten
 
 ```bash
 # Repository klonen
-git clone https://github.com/rofl501/RV-Fragen
-cd yamiseum-standalone
+git clone https://github.com/DeimosDeist/RV-Fragen
+cd RV-Fragen
+
+# Secrets-Verzeichnis vorbereiten
+cd secrets
+cp admin_username.txt.example admin_username.txt
+cp admin_password_hash_base64.txt.example admin_password_hash_base64.txt
+cp jwt_secret.txt.example jwt_secret.txt
+```
+
+Jetzt editiere die Secret-Dateien:
+
+**secrets/admin_username.txt**
+```
+admin
+```
+
+**secrets/admin_password_hash_base64.txt** - Generiere einen Passwort-Hash:
+```bash
+node -e "const bcrypt = require('bcryptjs'); const password = 'dein-sicheres-passwort'; const hash = bcrypt.hashSync(password, 10); const base64 = Buffer.from(hash).toString('base64'); console.log(base64);" > admin_password_hash_base64.txt
+```
+
+**secrets/jwt_secret.txt** - Generiere ein zufälliges Secret:
+```bash
+openssl rand -base64 32 > jwt_secret.txt
+```
+
+#### 3. Anwendung starten
+
+```bash
+# Zurück zum Hauptverzeichnis
+cd ..
+
+# Container bauen und starten
+docker compose up -d
+
+# Logs anzeigen
+docker compose logs -f
+```
+
+Die App läuft jetzt auf [http://localhost:3000](http://localhost:3000)
+
+#### Verwaltung
+
+```bash
+# Container stoppen
+docker compose down
+
+# Container neu bauen (nach Code-Änderungen)
+docker compose up -d --build
+
+# Status prüfen
+docker compose ps
+
+# Logs anzeigen
+docker compose logs -f app
+```
+
+### Option 2: Lokale Development (ohne Docker)
+
+#### 1. Voraussetzungen
+
+- Node.js 20+ 
+- npm
+
+#### 2. Installation
+
+```bash
+# Repository klonen
+git clone https://github.com/DeimosDeist/RV-Fragen
+cd RV-Fragen
 
 # Dependencies installieren
 npm install
 ```
 
-### 3. Umgebungsvariablen einrichten
+#### 3. Umgebungsvariablen einrichten
 
 Kopiere die `.env.example` Datei zu `.env.local` und fülle sie aus:
 
@@ -59,7 +133,7 @@ JWT_SECRET=dein-zufaelliges-secret-min-32-zeichen-lang
 
 **⚠️ WICHTIG**: Alle drei Umgebungsvariablen sind PFLICHT! Die Anwendung startet nicht ohne sie.
 
-#### Admin-Passwort generieren
+##### Admin-Passwort generieren
 
 Führe folgendes aus, um einen Passwort-Hash zu erstellen:
 
@@ -69,19 +143,19 @@ node -e "const bcrypt = require('bcryptjs'); const password = 'dein-passwort'; c
 
 Kopiere die Ausgabe in deine `.env.local`.
 
-#### JWT Secret generieren (optional)
+##### JWT Secret generieren
 
 ```bash
 openssl rand -base64 32
 ```
 
-### 4. Logos hinzufügen
+#### 4. Logos hinzufügen (Optional)
 
 Lege deine Logos im `public/` Ordner ab:
 - `RVlogo-lightmode.png` - Logo für Light Mode
 - `RVlogo-darkmode.png` - Logo für Dark Mode
 
-### 5. Entwicklungsserver starten
+#### 5. Entwicklungsserver starten
 
 ```bash
 npm run dev

@@ -1,22 +1,36 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { getRequiredSecret, getSecret } from './secrets';
 
-// Ensure JWT_SECRET is set - fail fast if not configured
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-  throw new Error('JWT_SECRET environment variable is required and must be at least 32 characters long!');
+// Lazy-load secrets only when first accessed at runtime
+// This ensures secrets are not required during build time
+let JWT_SECRET: string | null = null;
+let ADMIN_USERNAME: string | null = null;
+let ADMIN_PASSWORD_HASH: string | null = null;
+
+function getJWTSecret(): string {
+  if (JWT_SECRET === null) {
+    JWT_SECRET = getRequiredSecret('JWT_SECRET', 32);
+  }
+  return JWT_SECRET;
 }
-const JWT_SECRET: string = process.env.JWT_SECRET;
 
-if (!process.env.ADMIN_USERNAME) {
-  throw new Error('ADMIN_USERNAME environment variable is required!');
+function getAdminUsername(): string {
+  if (ADMIN_USERNAME === null) {
+    ADMIN_USERNAME = getRequiredSecret('ADMIN_USERNAME');
+  }
+  return ADMIN_USERNAME;
 }
-const ADMIN_USERNAME: string = process.env.ADMIN_USERNAME;
 
-// Decode password hash from Base64 (to avoid $ character issues in .env)
-const ADMIN_PASSWORD_HASH_BASE64 = process.env.ADMIN_PASSWORD_HASH_BASE64 || '';
-const ADMIN_PASSWORD_HASH = ADMIN_PASSWORD_HASH_BASE64 
-  ? Buffer.from(ADMIN_PASSWORD_HASH_BASE64, 'base64').toString('utf-8')
-  : '';
+function getAdminPasswordHash(): string {
+  if (ADMIN_PASSWORD_HASH === null) {
+    const base64 = getSecret('ADMIN_PASSWORD_HASH_BASE64') || '';
+    ADMIN_PASSWORD_HASH = base64 
+      ? Buffer.from(base64, 'base64').toString('utf-8')
+      : '';
+  }
+  return ADMIN_PASSWORD_HASH;
+}
 
 export interface AdminToken {
   username: string;
@@ -29,18 +43,20 @@ export interface AdminToken {
  * Verify admin credentials
  */
 export async function verifyAdmin(username: string, password: string): Promise<boolean> {
-  if (username !== ADMIN_USERNAME) {
+  if (username !== getAdminUsername()) {
     return false;
   }
   
+  const adminPasswordHash = getAdminPasswordHash();
+  
   // If no hash is set, reject (security)
-  if (!ADMIN_PASSWORD_HASH || ADMIN_PASSWORD_HASH.length < 10) {
+  if (!adminPasswordHash || adminPasswordHash.length < 10) {
     console.error('Admin password hash not configured!');
     return false;
   }
   
   try {
-    const result = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    const result = await bcrypt.compare(password, adminPasswordHash);
     return result;
   } catch (error) {
     console.error('Error verifying admin password:', error);
@@ -54,7 +70,7 @@ export async function verifyAdmin(username: string, password: string): Promise<b
 export function generateAdminToken(username: string): string {
   return jwt.sign(
     { username, isAdmin: true },
-    JWT_SECRET,
+    getJWTSecret(),
     { expiresIn: '7d' } // 7 days validity
   );
 }
@@ -64,7 +80,7 @@ export function generateAdminToken(username: string): string {
  */
 export function verifyToken(token: string): AdminToken | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJWTSecret());
     
     if (typeof decoded === 'object' && decoded !== null && 'isAdmin' in decoded) {
       const adminToken = decoded as AdminToken;

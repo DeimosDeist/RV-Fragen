@@ -44,3 +44,7 @@ next-env.d.ts
 
 # local database
 /data
+
+# Docker secrets (keep example files)
+/secrets/*.txt
+!/secrets/*.example
