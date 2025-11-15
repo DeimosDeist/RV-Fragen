@@ -2,7 +2,7 @@
 
 ## Option 1: Docker Compose (Empfohlen für Production)
 
-Docker Compose verwendet dateibasierte Secrets für maximale Sicherheit.
+Docker Compose verwendet dateibasierte Secrets, welche im docker-compose.yml gemappt werden.
 
 ### Schritt 1: Secret-Dateien erstellen
 
